@@ -7,7 +7,6 @@ import com.example.whatsappclone.R
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.Calendar.*
-
 private fun getCurrentLocale(context: Context): Locale {
     return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
         context.resources.configuration.locales[0]
