@@ -2,11 +2,15 @@ package com.example.whatsappclone.Activity
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.os.Message
 import com.example.whatsappclone.R
+import com.example.whatsappclone.modals.Message
 import com.example.whatsappclone.Util.User
+import com.example.whatsappclone.modals.Inbox
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
 import com.google.firebase.firestore.FirebaseFirestore
 import com.squareup.picasso.Picasso
 import com.vanniktech.emoji.EmojiManager
@@ -75,6 +79,58 @@ class ChatActivity : AppCompatActivity() {
         getMessages(friendId).child(id).setValue(msgMap).addOnSuccessListener {
 
         }
+        updateLastMessage(msgMap)
+    }
+
+    private fun updateLastMessage(message: Message) {
+        val inboxmap = Inbox(
+            message.msg,
+            friendId,
+            name,
+            image,
+            count = 0
+        )
+
+        // this outer getInbox is to set the values for cureent user
+        getInbox(mCurrentUid,friendId).setValue(inboxmap).addOnSuccessListener {
+
+            //this inner getInbox is to set the values for friend user
+            getInbox(friendId,mCurrentUid).addListenerForSingleValueEvent(object : ValueEventListener{
+                override fun onCancelled(p0: DatabaseError) {
+
+                }
+
+                override fun onDataChange(p0: DataSnapshot) {
+                    val value =  p0.getValue(Inbox::class.java)
+
+                    inboxmap.apply{
+                        from = message.senderId
+                        name = currentUser.name
+                        image=  currentUser.thumbImage
+                        count = 1
+                    }
+
+
+                    // now we will check if value is not null and we have send the last  message
+                    //then we will get its count and increase it with 1
+
+                    // this also the case when its exists then we don't have any unread message
+                    value?.let {
+                        if(it.from == message.senderId){
+                            inboxmap.count = value.count+1
+                        }
+                    }
+
+                    // then again set the inbox map
+                    getInbox(friendId,mCurrentUid).setValue(inboxmap)
+                }
+
+            })
+        }
+    }
+
+    private fun markArRead(){
+        getInbox(friendId,mCurrentUid).child("count").setValue(0)
     }
 
     private fun getMessages(friendId: String)= db.reference.child("messages/${getId(friendId)}")
